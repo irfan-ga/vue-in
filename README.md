@@ -1,74 +1,110 @@
-# vue-in
+# Vue-In Bank
 
-This template should help get you started developing with Vue 3 in Vite.
+A mini retail net-banking app — accounts, statements, fund transfer, beneficiaries
+— built as a deliberate learning product in Vue 3 + TypeScript.
 
-## Recommended IDE Setup
+The goal is not a novel UI. It is the skill set a frontend engineer actually needs
+on a financial codebase that is already in development: multi-step forms, exact
+money arithmetic, transaction state machines, idempotency, session handling, and
+failure paths that are handled rather than hoped away.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+> **Status:** pre-development. The repository is set up — stack, conventions,
+> mock-backend plumbing and roadmap are in place. No features are built yet.
+> Phase 1 is next; see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-## Recommended Browser Setup
+## Why this app, and not a todo list
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+Financial frontend work concentrates in a small number of unglamorous areas:
 
-## Type Support for `.vue` Imports in TS
+| Area | What it actually means |
+| ---- | ---------------------- |
+| Forms | Multi-step, conditional fields, sync + async validation, server-error reconciliation, IFSC/PAN/account formats |
+| Money | Never floats. Integer paise. `en-IN` lakh/crore grouping (`₹1,23,456.78`) |
+| Tables | Server-side pagination, sort and filter over large result sets |
+| Transaction state | `initiated → pending → success/failed`, polling, idempotency, double-submit prevention |
+| Auth | Token refresh rotation, idle timeout, step-up re-auth, RBAC route guards |
+| Failure handling | Timeouts, 500s, and the partial failure where the transfer succeeded but the response was lost |
+| Testing | Regulated code is tested code |
+| Accessibility | Frequently a compliance requirement, not a nicety |
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+A retail transfer flow exercises every row in that table. That is why it is the
+product being built here.
 
-## Customize configuration
+## Stack
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+Deliberately small. Nothing is added until something is blocked without it
+(see [`docs/adr/`](docs/adr/)).
 
-## Project Setup
+- **Vue 3 + TypeScript** (`<script setup>`), **Vite**, **vue-router**
+- **Pinia** — client state
+- **Pinia Colada** — server state: caching, retries, invalidation ([ADR 0002](docs/adr/0002-pinia-colada-for-server-state.md))
+- **VeeValidate + zod** — forms and schema validation, types inferred from the schema
+- **Tailwind CSS v4** — CSS-first config, no `tailwind.config.js`
+- **MSW** — the development backend, from day one ([ADR 0004](docs/adr/0004-msw-as-the-development-backend.md))
+- **Vitest** + `@vue/test-utils`, **Playwright** + `@axe-core/playwright`
+
+## Getting started
+
+Requires Node `>=22.18` (see `.nvmrc`) and pnpm.
 
 ```sh
 pnpm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 pnpm dev
 ```
 
-### Type-Check, Compile and Minify for Production
+Non-secret defaults are committed in `.env`, so the dev server starts with MSW
+intercepting API calls and the app runs with no backend at all.
+
+To override anything locally, `cp .env.example .env.local` and edit — `.env.local`
+is git-ignored. Setting `VITE_ENABLE_MSW=false` there points the app at a real API
+via `VITE_API_BASE_URL`.
+
+For end-to-end tests, install browsers once:
 
 ```sh
-pnpm build
+pnpm exec playwright install
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+## Commands
 
-```sh
-pnpm test:unit
-```
+| Command | Does |
+| ------- | ---- |
+| `pnpm dev` | Dev server with hot reload and MSW |
+| `pnpm build` | Type-check, then production build |
+| `pnpm preview` | Serve the production build locally |
+| `pnpm type-check` | `vue-tsc` across app, node and test configs |
+| `pnpm lint` | oxlint + eslint, both with `--fix` |
+| `pnpm format` | Prettier over `src/` |
+| `pnpm test:unit` | Vitest in watch mode |
+| `pnpm test:unit:run` | Vitest once |
+| `pnpm test:unit:coverage` | Vitest with a coverage report |
+| `pnpm test:e2e` | Playwright end-to-end tests |
+| `pnpm verify` | Type-check + lint + unit tests — the pre-push gate |
+| `pnpm msw:init` | Regenerate the MSW service worker after an msw upgrade |
 
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
+## Documentation
 
-```sh
-# Install browsers for the first run
-npx playwright install
+| Document | Read it for |
+| -------- | ----------- |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | The five phases, in ROI order, with a Definition of Done each |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, directory layout, the server/client state split, caching policy |
+| [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) | TypeScript, Vue, forms, testing, a11y and git conventions |
+| [`docs/adr/`](docs/adr/) | Why the stack is what it is, including the trade-offs accepted |
+| [`docs/OSS-LOG.md`](docs/OSS-LOG.md) | Open-source PRs — the separate skill of joining someone else's codebase |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Workflow, branch and commit format, review expectations |
+| [`CLAUDE.md`](CLAUDE.md) | Condensed context for AI assistants |
 
-# When testing on CI, must build the project first
-pnpm build
+## House rules
 
-# Runs the end-to-end tests
-pnpm test:e2e
-# Runs the tests only on Chromium
-pnpm test:e2e --project=chromium
-# Runs the tests of a specific file
-pnpm test:e2e tests/example.spec.ts
-# Runs the tests in debug mode
-pnpm test:e2e --debug
-```
+Three that explain most review comments:
 
-### Lint with [ESLint](https://eslint.org/)
+1. **Money is integer paise.** Floats never touch a currency value.
+2. **Every query states its own `staleTime`.** A stale balance is fine; a stale
+   pending-transaction status is a correctness bug.
+3. **Loading, empty, error, success.** A screen missing its error state is not done.
 
-```sh
-pnpm lint
-```
-# vue-in
+The rest are in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
+
+## License
+
+[MIT](LICENSE)

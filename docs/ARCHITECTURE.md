@@ -1,0 +1,108 @@
+# Architecture
+
+A single-page app behind a login. No SSR. See `docs/adr/0001-spa-not-nuxt.md`.
+
+## The one idea that organises everything
+
+**Server state and client state are different things and live in different places.**
+
+| State | Example | Home |
+| ----- | ------- | ---- |
+| Server state | accounts, statement rows, beneficiaries, transaction status | Pinia Colada queries |
+| Client state | auth session, UI toggles, multi-step form progress | Pinia stores |
+
+Hand-rolling caching, retries and invalidation inside a Pinia store is the most
+common mistake in a Vue app of this shape. Colada owns anything the server is the
+source of truth for; Pinia owns everything else.
+
+## Layers
+
+```
+┌─────────────────────────────────────────────┐
+│ features/*/components   views and widgets   │  Vue SFCs. Presentation + interaction.
+├─────────────────────────────────────────────┤
+│ features/*/composables  feature behaviour   │  Queries, mutations, state machines, form logic.
+├─────────────────────────────────────────────┤
+│ features/*/api          transport           │  One function per endpoint. Returns parsed data.
+│ features/*/schemas      zod schemas         │  Validation + the inferred types.
+├─────────────────────────────────────────────┤
+│ lib/                    framework-agnostic  │  money, formatting, http client, idempotency.
+└─────────────────────────────────────────────┘
+```
+
+Rules:
+
+- A component never calls `fetch`. It calls a composable.
+- An API function never returns `any`. It returns the output of a zod `parse`,
+  so the boundary between the server and the app is typed by one source.
+- `lib/` imports nothing from `features/`. Dependencies point inward only.
+- A feature may not import from another feature's internals. Anything shared is
+  promoted to `components/`, `composables/` or `lib/`.
+
+## Directory layout
+
+```
+src/
+├── assets/            Tailwind entry + design tokens, images
+├── components/        shared presentational components (no feature knowledge)
+├── composables/       shared composables
+├── features/          feature modules — the bulk of the app
+│   ├── accounts/
+│   ├── transfer/
+│   ├── auth/
+│   └── beneficiaries/
+├── lib/               framework-agnostic utilities (money, http, format)
+├── mocks/             MSW handlers, browser worker, node server
+├── router/            route table + navigation guards
+├── stores/            global client state (auth, ui)
+├── test/              Vitest setup and shared test helpers
+└── types/             types shared across features
+```
+
+Each feature folder follows the same internal shape:
+
+```
+features/<name>/
+├── api/           endpoint functions
+├── components/    feature components and views
+├── composables/   queries, mutations, behaviour
+├── schemas/       zod schemas
+├── stores/        feature-local client state (only if genuinely needed)
+├── types/         feature types not inferred from schemas
+└── __tests__/     unit and component tests
+```
+
+## The mock backend
+
+MSW is not a test fixture here, it is the development backend. It runs in the
+browser during `pnpm dev` and in Node during Vitest, from the same handlers in
+`src/mocks/handlers.ts`.
+
+This is deliberate: a fake API that can return a 500, stall for three seconds, or
+succeed only on retry means error handling gets written while the feature is
+written, instead of being bolted on later. Building against a happy-path mock is
+how side projects end up with no error states.
+
+See `docs/adr/0004-msw-as-the-development-backend.md`.
+
+## Money
+
+Currency is stored and transported as an **integer number of paise**. It is
+converted to a display string only at the edge, by `lib/money.ts`, using
+`Intl.NumberFormat('en-IN')`. No float ever holds a currency value.
+
+See `docs/adr/0003-money-as-integer-paise.md`.
+
+## Caching policy
+
+Colada's default `staleTime` is 5 seconds. That default is never inherited for
+financial data — every query sets `staleTime` explicitly, because the right answer
+differs per resource:
+
+| Query | Policy | Why |
+| ----- | ------ | --- |
+| account balance | short stale time, refetch on focus | slightly stale is acceptable |
+| statement page | longer stale time | historical rows do not change |
+| pending transaction status | `staleTime: 0`, polled | a stale status here is a correctness bug |
+
+See `docs/adr/0002-pinia-colada-for-server-state.md`.

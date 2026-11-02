@@ -1,32 +1,77 @@
 {
   "name": "vue-in",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Vue-In Bank — a mini retail net-banking app in Vue 3 + TypeScript, built to practise financial frontend patterns: multi-step forms, integer-paise money, transaction state machines, idempotency and failure handling.",
+  "keywords": [
+    "vue",
+    "vue3",
+    "typescript",
+    "vite",
+    "pinia",
+    "pinia-colada",
+    "vee-validate",
+    "zod",
+    "tailwindcss",
+    "msw",
+    "fintech",
+    "banking",
+    "learning-project"
+  ],
+  "author": "Shaik Md Irfan Nawaz",
+  "license": "MIT",
+  "homepage": "https://github.com/irfan-ga/vue-in#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/irfan-ga/vue-in.git"
+  },
+  "bugs": {
+    "url": "https://github.com/irfan-ga/vue-in/issues"
+  },
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": "^22.18.0 || >=24.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
-    "preview": "vite preview",
-    "test:unit": "vitest",
-    "test:e2e": "playwright test",
     "build-only": "vite build",
+    "preview": "vite preview",
     "type-check": "vue-tsc --build",
     "lint": "run-s \"lint:*\"",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "test:unit": "vitest",
+    "test:unit:run": "vitest run",
+    "test:unit:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps",
+    "msw:init": "msw init public --save",
+    "verify": "run-s type-check ci:lint ci:format test:unit:run",
+    "ci:lint": "oxlint . && eslint .",
+    "ci:format": "prettier --check src/"
   },
   "dependencies": {
+    "@pinia/colada": "^1.4.9",
+    "@vee-validate/zod": "^4.15.1",
+    "@vueuse/core": "^15.0.0",
     "pinia": "^4.0.3",
+    "vee-validate": "^4.15.1",
     "vue": "^3.5.42",
-    "vue-router": "^5.3.1"
+    "vue-router": "^5.3.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@tsconfig/node24": "^24.0.5",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.4",
     "@vitejs/plugin-vue": "^6.0.8",
+    "@vitest/coverage-v8": "^4.1.12",
     "@vitest/eslint-plugin": "^1.6.27",
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/test-utils": "^2.5.0",
@@ -38,9 +83,11 @@
     "eslint-plugin-vue": "~10.11.0",
     "jiti": "^2.7.0",
     "jsdom": "^30.0.1",
+    "msw": "^3.0.3",
     "npm-run-all2": "^9.0.3",
     "oxlint": "~1.82.0",
     "prettier": "3.9.6",
+    "tailwindcss": "^4.3.3",
     "typescript": "~6.0.0",
     "vite": "^8.2.2",
     "vite-plugin-vue-devtools": "^8.2.1",
@@ -48,7 +95,9 @@
     "vue-eslint-parser": "^10.4.1",
     "vue-tsc": "^3.3.11"
   },
-  "engines": {
-    "node": "^22.18.0 || >=24.12.0"
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

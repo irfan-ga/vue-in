@@ -40,3 +40,8 @@ __screenshots__/
 
 test-results/
 playwright-report/
+
+# Env — .env holds non-secret defaults and IS committed.
+# Local overrides, and anything holding a real credential, are not.
+.env.local
+.env.*.local
