@@ -5,18 +5,14 @@ When this file and a personal preference disagree, this file wins.
 
 ## Non-negotiables
 
-These are the rules that exist because this is a financial app.
+The thirty numbered rules live in [`CLAUDE.md`](../CLAUDE.md) and are canonical:
+correctness (1-9), architecture and boundaries (10-19), hygiene and change
+discipline (20-30). They are deliberately not repeated here — one copy, one place
+to keep true.
 
-1. **Money is an integer number of paise.** Never a float, never a formatted
-   string in state. Convert at the display edge only, via `lib/money.ts`.
-2. **Every query sets `staleTime` explicitly.** Never inherit the default for
-   financial data.
-3. **Every mutating request that moves money carries an idempotency key**, stable
-   across retries of the same user intent.
-4. **Every async surface handles four states:** loading, empty, error, success.
-   A screen with no error state is incomplete, not "to be done later".
-5. **A bug fix ships with the test that proves it.** This is the strongest signal
-   a change can send to a reviewer.
+This document covers the detail *around* those rules: style, idiom and the
+reasoning behind them. Where the two appear to disagree, `CLAUDE.md` wins and the
+discrepancy is a bug in this file.
 
 ## TypeScript
 

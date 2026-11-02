@@ -103,7 +103,9 @@ Three that explain most review comments:
    pending-transaction status is a correctness bug.
 3. **Loading, empty, error, success.** A screen missing its error state is not done.
 
-The rest are in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
+The other twenty-seven are in [`CLAUDE.md`](CLAUDE.md) — correctness (1-9),
+architecture and boundaries (10-19), hygiene and change discipline (20-30) —
+with the style detail behind them in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
 
 ## License
 
