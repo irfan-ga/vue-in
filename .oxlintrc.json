@@ -1,11 +1,106 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["eslint", "typescript", "unicorn", "oxc", "vue", "vitest"],
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "vue",
+    "vitest",
+    "import"
+  ],
+  "ignorePatterns": [
+    "public/mockServiceWorker.js",
+    "dist/**",
+    "coverage/**"
+  ],
   "env": {
     "browser": true
   },
-  "ignorePatterns": ["public/mockServiceWorker.js", "dist/**", "coverage/**"],
   "categories": {
     "correctness": "error"
-  }
+  },
+  "rules": {
+    "no-console": "error",
+    "max-depth": [
+      "error",
+      {
+        "max": 3
+      }
+    ],
+    "max-params": [
+      "error",
+      {
+        "max": 7
+      }
+    ],
+    "max-lines": [
+      "error",
+      {
+        "max": 200,
+        "skipComments": true,
+        "skipBlankLines": true
+      }
+    ],
+    "max-lines-per-function": [
+      "error",
+      {
+        "max": 40,
+        "skipComments": true,
+        "skipBlankLines": true
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@/lib",
+            "message": "Rule 12: no barrel files. Import the module directly, e.g. '@/lib/money'."
+          },
+          {
+            "name": "@/components",
+            "message": "Rule 12: no barrel files. Import the component directly."
+          },
+          {
+            "name": "@/composables",
+            "message": "Rule 12: no barrel files. Import the composable directly."
+          },
+          {
+            "name": "@/stores",
+            "message": "Rule 12: no barrel files. Import the store directly."
+          },
+          {
+            "name": "@/types",
+            "message": "Rule 12: no barrel files. Import the type module directly."
+          }
+        ]
+      }
+    ],
+    "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "import/no-duplicates": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/mocks/**",
+        "src/test/**",
+        "e2e/**",
+        "**/__tests__/**"
+      ],
+      "rules": {
+        "max-lines": "off",
+        "max-lines-per-function": "off"
+      }
+    },
+    {
+      "files": [
+        "scripts/**"
+      ],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
 }

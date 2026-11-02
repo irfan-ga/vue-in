@@ -30,6 +30,10 @@ source of truth for; Pinia owns everything else.
 └─────────────────────────────────────────────┘
 ```
 
+These layers are not a drawing. They are declared as `boundaries/elements` and
+`boundaries/dependencies` in `eslint.config.ts` and fail the build when crossed —
+see `docs/adr/0006-architecture-boundaries-as-lint-rules.md`.
+
 Rules:
 
 - A component never calls `fetch`. It calls a composable.

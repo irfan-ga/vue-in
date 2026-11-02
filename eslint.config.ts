@@ -4,6 +4,7 @@ import pluginVue from 'eslint-plugin-vue'
 import pluginPlaywright from 'eslint-plugin-playwright'
 import pluginVitest from '@vitest/eslint-plugin'
 import pluginOxlint from 'eslint-plugin-oxlint'
+import boundaries from 'eslint-plugin-boundaries'
 import skipFormatting from 'eslint-config-prettier/flat'
 
 // To allow more languages other than `ts` in `.vue` files, uncomment the following lines:
@@ -39,6 +40,154 @@ export default defineConfigWithVueTs(
   },
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
+
+  /*
+   * Architecture boundaries (rules 10, 11 and 13). This owns cross-feature imports
+   * outright: unlike a no-restricted-imports pattern, it resolves each import to a
+   * file and classifies it, so `../beta/thing` and `@/features/beta/thing` are the
+   * same violation and neither can be spelled around.
+   *
+   * src/main.ts and src/App.vue are intentionally left unclassified: no policy
+   * matches them, so the bootstrap is free to wire everything together.
+   */
+  {
+    name: 'app/boundaries',
+    files: ['src/**/*.{ts,mts,vue}'],
+    plugins: { boundaries },
+    settings: {
+      /*
+       * Without a resolver, boundaries reads '@/features/beta' as an npm package
+       * named '@/features' and cannot resolve '../beta/thing' to a .ts file at
+       * all — so every cross-feature import passes silently. This resolver reads
+       * the `@/*` mapping straight from tsconfig.app.json.
+       */
+      'import/resolver': {
+        typescript: {
+          project: ['tsconfig.app.json', 'tsconfig.vitest.json', 'tsconfig.node.json'],
+          // The three project files are deliberate (app / test / node), so the
+          // resolver's multi-project warning is noise on every run.
+          noWarnOnMultipleProjects: true,
+        },
+      },
+      'boundaries/elements': [
+        { type: 'feature', pattern: 'src/features/*', capture: ['name'] },
+        /*
+         * Each shared layer is a single element: a trailing /* would match only
+         * sub-folders, leaving files like src/lib/money.ts unclassified. Features
+         * keep the glob because rule 11 needs one element per feature.
+         */
+        { type: 'component', pattern: 'src/components' },
+        { type: 'composable', pattern: 'src/composables' },
+        { type: 'store', pattern: 'src/stores' },
+        { type: 'router', pattern: 'src/router' },
+        { type: 'lib', pattern: 'src/lib' },
+        { type: 'types', pattern: 'src/types' },
+        { type: 'assets', pattern: 'src/assets' },
+        { type: 'mocks', pattern: 'src/mocks' },
+        { type: 'test', pattern: 'src/test' },
+      ],
+    },
+    rules: {
+      'boundaries/dependencies': [
+        'error',
+        {
+          default: 'disallow',
+          policies: [
+            // Third-party and Node builtins are everyone's business.
+            { allow: { to: { module: { origin: 'external' } } } },
+            { allow: { to: { module: { origin: 'builtin' } } } },
+
+            /*
+             * Rule 11: a feature may import its own internals and nothing from a
+             * sibling feature. The captured name must match on both sides.
+             */
+            {
+              from: { element: { type: 'feature' } },
+              allow: {
+                to: {
+                  element: { type: 'feature', captured: { name: '{{from.captured.name}}' } },
+                },
+              },
+            },
+            {
+              from: { element: { type: 'feature' } },
+              allow: {
+                to: {
+                  element: {
+                    types: { anyOf: ['component', 'composable', 'store', 'lib', 'types', 'assets'] },
+                  },
+                },
+              },
+            },
+
+            // Rule 13: shared components stay presentational — no stores, no features.
+            {
+              from: { element: { type: 'component' } },
+              allow: {
+                to: {
+                  element: { types: { anyOf: ['component', 'composable', 'lib', 'types', 'assets'] } },
+                },
+              },
+            },
+            {
+              from: { element: { type: 'composable' } },
+              allow: {
+                to: { element: { types: { anyOf: ['composable', 'store', 'lib', 'types'] } } },
+              },
+            },
+            {
+              from: { element: { type: 'store' } },
+              allow: { to: { element: { types: { anyOf: ['store', 'lib', 'types'] } } } },
+            },
+
+            // The router wires features in (rule 16), so it may reach them.
+            {
+              from: { element: { type: 'router' } },
+              allow: {
+                to: {
+                  element: {
+                    types: { anyOf: ['feature', 'component', 'store', 'lib', 'types'] },
+                  },
+                },
+              },
+            },
+
+            // Rule 10: lib is the floor. It imports nothing above itself.
+            {
+              from: { element: { type: 'lib' } },
+              allow: { to: { element: { types: { anyOf: ['lib', 'types'] } } } },
+            },
+            { from: { element: { type: 'types' } }, allow: { to: { element: { type: 'types' } } } },
+            {
+              from: { element: { type: 'mocks' } },
+              allow: { to: { element: { types: { anyOf: ['mocks', 'lib', 'types'] } } } },
+            },
+
+            // Test setup may reach anything it needs to stand the app up.
+            { from: { element: { type: 'test' } }, allow: { to: { element: { type: '*' } } } },
+          ],
+        },
+      ],
+    },
+  },
+
+  /*
+   * Budgets for single-file components (rule 25). These live here rather than in
+   * .oxlintrc.json because oxlint only sees an SFC's <script> block: it enforces
+   * no-console, max-depth, max-params and no-restricted-imports inside .vue files
+   * perfectly well, but its max-lines never sees the template.
+   *
+   * Must stay AFTER buildFromOxlintConfigFile, which switches off the ESLint
+   * copies of rules oxlint already owns — including max-lines.
+   */
+  {
+    name: 'app/sfc-budgets',
+    files: ['**/*.vue'],
+    rules: {
+      'max-lines': ['error', { max: 200, skipComments: true, skipBlankLines: true }],
+      'vue/max-props': ['error', { maxProps: 7 }],
+    },
+  },
 
   skipFormatting,
 )

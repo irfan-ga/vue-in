@@ -79,7 +79,9 @@ pnpm exec playwright install
 | `pnpm test:unit:run` | Vitest once |
 | `pnpm test:unit:coverage` | Vitest with a coverage report |
 | `pnpm test:e2e` | Playwright end-to-end tests |
-| `pnpm verify` | Type-check + lint + unit tests — the pre-push gate |
+| `pnpm ci:rules` | Rules 12 and 21 from `CLAUDE.md`, which no linter can express |
+| `pnpm ci:lint:types` | Type-aware lint (rule 32) — slower, runs as its own CI job |
+| `pnpm verify` | Type-check + lint + format + rules + unit tests — the pre-push gate |
 | `pnpm msw:init` | Regenerate the MSW service worker after an msw upgrade |
 
 ## Documentation

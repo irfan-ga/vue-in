@@ -6,31 +6,30 @@ on:
   pull_request:
     branches: [main]
 
+# Supersede an in-flight run when new commits land, so a push does not pay for
+# a result nobody will read.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # The fast gate. Target: under five minutes (rule 31).
   verify:
     name: Type-check, lint and unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
 
-      # type-check + lint + format check + unit tests, all check-only (no --fix).
-      - run: pnpm verify
-
-      - name: Unit test coverage
-        run: pnpm test:unit:coverage
+      # type-check + lint + format + rules + unit tests with coverage, in one pass.
+      # Coverage replaces the plain test run rather than following it, so the
+      # suite executes once.
+      - run: pnpm ci:verify
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -38,6 +37,22 @@ jobs:
           name: coverage
           path: coverage/
           retention-days: 7
+
+  # Type-aware linting needs the TypeScript program and is materially slower than
+  # the syntactic pass, so it runs beside the fast gate instead of inside it.
+  # This is the job that catches an unawaited money-moving mutation (rule 32).
+  types:
+    name: Type-aware lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm ci:lint:types
 
   build:
     name: Production build
@@ -64,14 +79,16 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # Pull requests run Chromium only; `main` runs the full browser matrix.
+      # Three browser downloads on every push is the kind of cost that gets the
+      # whole job disabled later.
       - name: Install Playwright browsers
-        run: pnpm test:e2e:install
+        run: pnpm exec playwright install --with-deps ${{ github.event_name == 'pull_request' && 'chromium' || '' }}
 
-      # Playwright's webServer config builds nothing itself, so build first:
-      # on CI it serves the production preview build, with MSW as the backend.
+      # Playwright serves the production preview build on CI, so build first.
       - run: pnpm build-only
 
-      - run: pnpm test:e2e
+      - run: pnpm test:e2e ${{ github.event_name == 'pull_request' && '--project=chromium' || '' }}
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

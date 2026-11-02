@@ -41,7 +41,10 @@ pnpm test:unit           # vitest (watch)
 pnpm test:unit:run       # vitest once — use this in automation
 pnpm test:unit:coverage  # vitest with coverage
 pnpm test:e2e            # playwright
-pnpm verify              # type-check + lint + unit tests; run before declaring done
+pnpm ci:rules            # rules 12 and 21, which no linter can express
+pnpm ci:lint:types       # type-aware lint (rule 32); slow, runs as its own CI job
+pnpm verify              # the fast local gate: type-check + lint + format + rules + tests
+pnpm ci:verify           # what CI runs: same, with coverage replacing the plain test run
 ```
 
 ## Rules that are not negotiable
@@ -141,6 +144,17 @@ convenience — if one genuinely must break, see *When a rule has to break* belo
     changes there need a test and a thought about everything downstream. If `lib/`
     is growing faster than `features/`, domain logic has leaked into it and needs
     pushing back out.
+31. **The pull-request gate stays under five minutes.** Anything that cannot meet
+    that budget runs on `main` or nightly instead. This is not a performance
+    nicety: a slow gate gets skipped, disabled or merged around, and the quality
+    it was protecting then decays silently — worse than never having added it.
+    Type-aware linting and the full browser matrix sit outside the fast gate for
+    exactly this reason.
+32. **Every promise is awaited or explicitly handled.** A floating promise in a
+    money-moving path means the UI reports success while the request is still in
+    flight, or fails silently when it rejects. Enforced by `pnpm ci:lint:types`
+    (`@typescript-eslint/no-floating-promises`), which found exactly this bug in
+    `src/main.ts` the day it was switched on.
 
 ### When a rule has to break
 
@@ -152,14 +166,48 @@ stops telling the truth about its own code.
 
 ### What is actually enforced today
 
-- **Machine-checked by `pnpm verify`:** rule 9 and the type-level half of 17-18
-  (`type-check`), rule 29 (prettier, oxlint, eslint).
-- **Review-checked:** everything else, backed by the checklist in
-  `.github/pull_request_template.md`.
+`pnpm verify` fails the build on these:
 
-Rules 12, 20, 21, 23, 24 and 25 are mechanically checkable and currently are not
-checked. Wiring them into the linter is a worthwhile chore — do it as its own
-change, with the budgets set to the values above.
+| Rule | Enforced by |
+| ---- | ----------- |
+| 9 (no `any`, strict) | `pnpm type-check` |
+| 10 (dependency direction) | eslint `boundaries/dependencies` (the layer matrix); oxlint `import/no-cycle`, `import/no-self-import` for cycles |
+| 11 (no cross-feature imports) | eslint `boundaries/dependencies` — resolves imports to files, so alias, relative and deep-relative forms are all caught |
+| 12 (no barrels) | oxlint blocks *importing* one; `pnpm ci:rules` blocks *creating* one |
+| 13 (shared components presentational) | eslint `boundaries/dependencies` — `component` may not reach `store` or `feature` |
+| 17, 18 (unions, no `as`/`!`) | `pnpm type-check` — the type-level half only |
+| 20 (dead code) | oxlint `no-unused-vars` — unused *exports* and orphan files are still review-checked |
+| 21 (TODO references) | `pnpm ci:rules` |
+| 23 (no `console.*`) | oxlint `no-console` |
+| 25 (budgets) | oxlint `max-lines`, `max-lines-per-function`, `max-depth`, `max-params`; eslint `max-lines` + `vue/max-props` for `.vue` |
+| 29 (formatting) | prettier, oxlint, eslint |
+| 32 (no floating promises) | `pnpm ci:lint:types`, its own CI job |
+
+**If you change the boundaries setup, prove it still fires.** A boundaries config
+that resolves nothing reports nothing — the original rule-11 hole hid behind
+exactly that. The resolver reads the `@/*` mapping from `tsconfig.app.json`; if
+that mapping moves, aliases are silently read as npm package names again. After
+any change there, write a deliberate cross-feature import and confirm it errors
+before trusting a clean run.
+
+Deliberate exemptions, each with a reason rather than a shrug:
+
+- `src/mocks/**`, `src/test/**`, `e2e/**`, `**/__tests__/**` — no length budgets.
+  A table-driven test or a set of MSW scenarios is legitimately long and splitting
+  it would hurt readability.
+- `scripts/**` — `no-console` off. A command-line check script exists to print.
+- `.vue` files get their line budget from eslint, not oxlint: oxlint only sees an
+  SFC's `<script>` block, so its `max-lines` never counts the template.
+
+**Rule 24 (no magic numbers) is deliberately not automated.** `no-magic-numbers`
+exists and works, but it cannot tell a domain constant (`100000` as a transfer
+limit — the thing the rule is about) from ordinary arithmetic (`* 100`, `.length - 1`,
+a timeout). Turning it on produces noise, and noise trains people to sprinkle
+suppressions, which quietly defeats rule 22. It stays review-checked. Revisit in
+Phase 2, when there are real domain constants to point at.
+
+Everything else is review-checked, backed by the checklist in
+`.github/pull_request_template.md`.
 
 ## Layout
 

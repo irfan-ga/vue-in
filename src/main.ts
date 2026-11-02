@@ -23,7 +23,9 @@ async function enableMocking(): Promise<void> {
   })
 }
 
-enableMocking().then(() => {
+async function bootstrap(): Promise<void> {
+  await enableMocking()
+
   const app = createApp(App)
 
   app.use(createPinia())
@@ -47,4 +49,17 @@ enableMocking().then(() => {
   app.use(router)
 
   app.mount('#app')
+}
+
+/*
+ * Nothing here can report through the app, because the app is what failed to
+ * start — so render a plain fallback and re-throw, which surfaces the error in
+ * devtools and, from Phase 5, in structured error reporting.
+ */
+bootstrap().catch((error: unknown) => {
+  const root = document.getElementById('app')
+  if (root) {
+    root.textContent = 'Something went wrong while starting the app. Please reload the page.'
+  }
+  throw error
 })

@@ -13,3 +13,5 @@ record that links back, rather than editing history.
 | [0003](0003-money-as-integer-paise.md) | Money as integer paise | Accepted |
 | [0004](0004-msw-as-the-development-backend.md) | MSW as the development backend | Accepted |
 | [0005](0005-no-component-library-yet.md) | No component library yet | Accepted |
+| [0006](0006-architecture-boundaries-as-lint-rules.md) | Architecture boundaries as lint rules | Accepted |
+| [0007](0007-tooling-deliberately-deferred.md) | Tooling deliberately deferred (husky, knip, Sentry, LHCI) | Accepted |
