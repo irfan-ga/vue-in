@@ -133,6 +133,24 @@ converted to a display string only at the edge, by `lib/money.ts`, using
 
 See `docs/adr/0003-money-as-integer-paise.md`.
 
+## Failures
+
+`lib/http.ts` turns everything a request can do wrong into one of five kinds, so
+that a component branches on a union instead of reconstructing the situation
+from a status code and a couple of booleans (rule 17):
+
+| Kind | Means | What the UI does with it |
+| ---- | ----- | ------------------------ |
+| `network` | the request never reached a server | say the connection failed, offer a retry |
+| `timeout` | over the request budget | offer a retry |
+| `cancelled` | superseded or unmounted | nothing: the user did not cause it and must not see it |
+| `status` | the server answered, and said no | show its message; branch on 404 vs 400 vs 5xx |
+| `malformed` | the response failed its schema | a broken contract, not a user problem — report it |
+
+Every api function returns parsed data or throws `HttpError` carrying one of
+these. The message on the error is for developers; user-facing copy belongs to
+the component, the only layer that knows what the user was trying to do.
+
 ## Caching policy
 
 Colada's default `staleTime` is 5 seconds. That default is never inherited for
