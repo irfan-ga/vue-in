@@ -12,9 +12,11 @@ beforeAll(() => {
   server.listen({ onUnhandledFrame: 'error' })
 })
 
-// Per-test overrides (e.g. forcing a 500) must not leak into the next test.
+// Per-test overrides (e.g. forcing a 500) must not leak into the next test, and
+// neither may a request log left behind by `src/test/requests.ts`.
 afterEach(() => {
   server.resetHandlers()
+  server.events.removeAllListeners()
 })
 
 afterAll(() => {

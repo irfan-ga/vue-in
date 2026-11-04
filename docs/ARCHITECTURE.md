@@ -159,8 +159,22 @@ differs per resource:
 
 | Query | Policy | Why |
 | ----- | ------ | --- |
-| account balance | short stale time, refetch on focus | slightly stale is acceptable |
-| statement page | longer stale time | historical rows do not change |
-| pending transaction status | `staleTime: 0`, polled | a stale status here is a correctness bug |
+| account balance (`useAccounts`) | `staleTime: 15_000`, refetch on focus | slightly stale is acceptable; returning to the tab re-checks |
+| statement page (`useStatement`) | `staleTime: 30_000` | posted rows never change, but the newest page carries pending ones |
+| pending transaction status | `staleTime: 0`, polled (Phase 2) | a stale status here is a correctness bug |
+
+The statement's window is shorter than "historical data never changes" would
+suggest, because `staleTime` is a plain number rather than a getter and every
+page of a statement is created from one options object — so it cannot vary by
+page. Rather than cache the newest page as if it were history, the whole
+statement stays moderately fresh, and Phase 2 polls an individual transaction's
+status with its own query.
+
+A query key is the identity of a cache entry, so it carries every parameter that
+changes the response. `features/accounts/composables/keys.ts` passes the whole
+params object instead of a hand-written list of fields, which is what stops a new
+filter from being added to the request and forgotten in the key — the bug that
+looks like a caching feature. Colada hashes key segments with `JSON.stringify`
+over sorted object keys, so property order does not matter.
 
 See `docs/adr/0002-pinia-colada-for-server-state.md`.

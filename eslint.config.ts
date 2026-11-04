@@ -164,7 +164,16 @@ export default defineConfigWithVueTs(
               from: { element: { type: 'lib' } },
               allow: { to: { element: { types: { anyOf: ['lib', 'types'] } } } },
             },
-            { from: { element: { type: 'types' } }, allow: { to: { element: { type: 'types' } } } },
+            /*
+             * types/ is the other foundation layer, and a type shared across
+             * features routinely has to name one of lib's — `Paise`, a request
+             * failure. lib still imports nothing above itself, and a real import
+             * cycle would be caught by oxlint's `import/no-cycle`.
+             */
+            {
+              from: { element: { type: 'types' } },
+              allow: { to: { element: { types: { anyOf: ['types', 'lib'] } } } },
+            },
             {
               from: { element: { type: 'mocks' } },
               allow: { to: { element: { types: { anyOf: ['mocks', 'lib', 'types'] } } } },

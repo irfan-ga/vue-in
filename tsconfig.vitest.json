@@ -1,9 +1,20 @@
 {
   "extends": "./tsconfig.app.json",
 
-  // Override to include only test files and clear exclusions.
-  // Application code imported in tests is automatically included via module resolution.
-  "include": ["src/**/__tests__/*", "src/test/**/*", "src/mocks/node.ts", "env.d.ts"],
+  /*
+   * Override to include only test files and clear exclusions. Application code
+   * imported in tests comes in through module resolution — but ambient
+   * declarations do not, because nothing imports them. `src/types/` holds the
+   * module augmentations (e.g. Colada's error type), so tests type-check
+   * against the same globals the app does.
+   */
+  "include": [
+    "src/**/__tests__/*",
+    "src/test/**/*",
+    "src/types/**/*",
+    "src/mocks/node.ts",
+    "env.d.ts"
+  ],
   "exclude": [],
 
   "compilerOptions": {
