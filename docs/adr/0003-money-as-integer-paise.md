@@ -18,6 +18,18 @@ Indian currency formatting is also not the default: digits group as
   `lib/money.ts`, using `Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })`.
 - Parsing user input converts to paise immediately, at the boundary.
 
+`lib/money.ts` exposes paise as a **branded** number type rather than a bare
+`number`, so rule 1 is enforced by the compiler instead of by review: a value
+only becomes `Paise` by passing through `toPaise` (a checked safe integer) or
+`parseRupees` (user text). Arithmetic goes through `sumPaise` / `subtractPaise`,
+which re-establish that invariant on the result.
+
+Formatting builds the decimal string from the integer digits and hands `Intl` a
+string, rather than dividing by 100 first. Division is lossy near the top of the
+safe integer range — `9007199254740991 / 100` formats a paise short — and a
+money module that quietly drops a paise at the edge of its range is not one worth
+trusting in the middle of it.
+
 ## Consequences
 
 - Arithmetic is exact and reconciles.
