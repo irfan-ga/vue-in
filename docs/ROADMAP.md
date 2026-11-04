@@ -19,9 +19,9 @@ Data display, done properly.
 
 - [ ] Account list with balances
 - [ ] Statement table with server-side pagination, sort and date-range filter
-- [ ] `lib/money.ts` — integer paise storage, `Intl.NumberFormat('en-IN')` display
+- [x] `lib/money.ts` — integer paise storage, `Intl.NumberFormat('en-IN')` display
 - [ ] Skeleton loaders, empty state, error state, retry
-- [ ] MSW handlers returning realistic latency, 500s and retry-then-succeed
+- [x] MSW handlers returning realistic latency, 500s and retry-then-succeed
 
 **Teaches:** server state, the money discipline, table patterns.
 

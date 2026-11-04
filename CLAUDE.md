@@ -198,6 +198,10 @@ Deliberate exemptions, each with a reason rather than a shrug:
 - `scripts/**` — `no-console` off. A command-line check script exists to print.
 - `.vue` files get their line budget from eslint, not oxlint: oxlint only sees an
   SFC's `<script>` block, so its `max-lines` never counts the template.
+- `**/__tests__/**` and `src/test/**` may import `src/mocks/**` — a spec file has
+  to stand the app up, and the mock backend is part of that. It is a file
+  category in the boundaries config, not a hole: rule 11 still fires on a
+  cross-feature import from a spec, which is checked by writing one.
 
 **Rule 24 (no magic numbers) is deliberately not automated.** `no-magic-numbers`
 exists and works, but it cannot tell a domain constant (`100000` as a transfer

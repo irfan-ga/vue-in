@@ -7,9 +7,12 @@
   "exclude": [],
 
   "compilerOptions": {
-    // Vitest runs in a different environment than the application code.
-    // Adjust lib and types accordingly.
-    "lib": [],
+    /*
+     * `lib` is inherited from tsconfig.app.json on purpose. Tests run in jsdom,
+     * so they need the same DOM and ES2022 globals the app has — blanking it
+     * here (the create-vue default) silently removed Object.hasOwn, Array.at and
+     * everything else newer than the libs @types/node happens to pull in.
+     */
     "types": ["node", "jsdom"],
 
     // `vue-tsc --build` produces a .tsbuildinfo file for incremental type-checking.

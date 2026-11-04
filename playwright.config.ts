@@ -17,7 +17,7 @@ export default defineConfig({
 
   use: {
     actionTimeout: 0,
-    baseURL: process.env.CI ? 'http://localhost:4173' : 'http://localhost:5173',
+    baseURL: process.env.CI ? 'http://localhost:4180' : 'http://localhost:5180',
     trace: 'on-first-retry',
     headless: !!process.env.CI,
   },
@@ -37,10 +37,15 @@ export default defineConfig({
    * Dev server locally for the faster feedback loop, preview build on CI for a
    * realistic one. MSW serves the API in both — it is the development backend
    * (ADR 0004), so `VITE_ENABLE_MSW` is not tied to `import.meta.env.DEV`.
+   *
+   * The ports are this project's own (vite.config.ts pins them with
+   * `strictPort`). `reuseExistingServer` attaches to whatever already answers on
+   * the port, and on Vite's shared default of 5173 that was a different project
+   * entirely — the suite passed against someone else's app.
    */
   webServer: {
     command: process.env.CI ? 'pnpm preview' : 'pnpm dev',
-    port: process.env.CI ? 4173 : 5173,
+    port: process.env.CI ? 4180 : 5180,
     reuseExistingServer: !process.env.CI,
   },
 })

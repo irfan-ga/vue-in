@@ -20,6 +20,25 @@ test('boots without an uncaught error', async ({ page }) => {
   const response = await page.goto('/')
 
   expect(response?.ok()).toBe(true)
+  /*
+   * The title pins which app answered. Vite's default port is shared with every
+   * other Vite project, and this suite once passed against a different app
+   * entirely on a reused dev server — `#app` exists everywhere.
+   */
+  await expect(page).toHaveTitle('Vue-In Bank')
   await expect(page.locator('#app')).toBeAttached()
   expect(errors).toEqual([])
+})
+
+/**
+ * The mock backend is a service worker, so "is there an API" is a real question
+ * in the browser and not just in Vitest. Polled because the worker registers
+ * during the first load and the page is served before it controls the client.
+ */
+test('serves the mock bank through the service worker', async ({ page }) => {
+  await page.goto('/')
+
+  await expect
+    .poll(async () => page.evaluate(async () => (await fetch('/api/accounts')).status))
+    .toBe(200)
 })

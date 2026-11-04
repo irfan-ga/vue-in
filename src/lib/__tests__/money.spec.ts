@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   formatPaise,
+  negatePaise,
   parseRupees,
   subtractPaise,
   sumPaise,
@@ -101,6 +102,18 @@ describe('subtractPaise', () => {
   it('allows an overdrawn result', () => {
     // A negative balance is a real state; clamping it here would hide it.
     expect(subtractPaise(toPaise(100), toPaise(500))).toBe(-400)
+  })
+})
+
+describe('negatePaise', () => {
+  it('flips the sign', () => {
+    expect(negatePaise(toPaise(500))).toBe(-500)
+    expect(negatePaise(toPaise(-500))).toBe(500)
+  })
+
+  it('leaves zero alone, rather than producing negative zero', () => {
+    // `-0` is not `0` to `Object.is`, which is what `toBe` compares with.
+    expect(negatePaise(toPaise(0))).toBe(0)
   })
 })
 

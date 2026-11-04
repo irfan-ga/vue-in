@@ -7,6 +7,12 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
+      /*
+       * Tells src/lib/config.ts which environment this is, which is how the MSW
+       * handlers drop their artificial latency under test. The committed .env
+       * says `development`, and that is right for `pnpm dev`.
+       */
+      env: { VITE_APP_ENV: 'test' },
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
       // Starts the MSW node server for every test file.

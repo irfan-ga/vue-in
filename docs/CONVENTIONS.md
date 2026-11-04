@@ -5,10 +5,10 @@ When this file and a personal preference disagree, this file wins.
 
 ## Non-negotiables
 
-The thirty numbered rules live in [`CLAUDE.md`](../CLAUDE.md) and are canonical:
-correctness (1-9), architecture and boundaries (10-19), hygiene and change
-discipline (20-30). They are deliberately not repeated here — one copy, one place
-to keep true.
+The thirty-two numbered rules live in [`CLAUDE.md`](../CLAUDE.md) and are
+canonical: correctness (1-9), architecture and boundaries (10-19), hygiene and
+change discipline (20-32). They are deliberately not repeated here — one copy,
+one place to keep true.
 
 This document covers the detail *around* those rules: style, idiom and the
 reasoning behind them. Where the two appear to disagree, `CLAUDE.md` wins and the
@@ -38,7 +38,7 @@ discrepancy is a bug in this file.
 ## State
 
 - Server data → Pinia Colada (`useQuery` / `useMutation`).
-- Client-only data → Pinia store with the setup syntax, matching `stores/counter.ts`.
+- Client-only data → Pinia store, setup syntax only (`defineStore('name', () => {...})`).
 - Never cache server data in a Pinia store "so it is easier to get at".
 
 ## Forms

@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { PiniaColada } from '@pinia/colada'
 
+import { config } from './lib/config'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
@@ -10,11 +11,12 @@ import './assets/main.css'
  * Start the MSW mock backend when enabled. This is awaited before mounting so
  * that no request can escape to the network during the first render.
  *
- * Enabled via VITE_ENABLE_MSW rather than `import.meta.env.DEV`, because the
- * production preview build also needs a backend for Playwright on CI.
+ * Enabled via config rather than `import.meta.env.DEV`, because the production
+ * preview build also needs a backend for Playwright on CI. The env read itself
+ * lives in src/lib/config.ts and nowhere else (rule 15).
  */
 async function enableMocking(): Promise<void> {
-  if (import.meta.env.VITE_ENABLE_MSW !== 'true') return
+  if (!config.enableMocking) return
 
   const { worker } = await import('./mocks/browser')
   await worker.start({

@@ -66,6 +66,15 @@ export function subtractPaise(minuend: Paise, subtrahend: Paise): Paise {
 }
 
 /**
+ * Flips the sign and stays money. Written as `0 - value` rather than `-value`
+ * because unary negation of a branded number is a type error — and because it
+ * keeps positive zero positive.
+ */
+export function negatePaise(value: Paise): Paise {
+  return toPaise(0 - value)
+}
+
+/**
  * The display edge: `12345678` → `₹1,23,456.78`.
  *
  * The decimal string is built from the integer digits and handed to `Intl` as a

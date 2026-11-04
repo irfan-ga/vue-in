@@ -8,9 +8,10 @@ on a financial codebase that is already in development: multi-step forms, exact
 money arithmetic, transaction state machines, idempotency, session handling, and
 failure paths that are handled rather than hoped away.
 
-> **Status:** pre-development. The repository is set up — stack, conventions,
-> mock-backend plumbing and roadmap are in place. No features are built yet.
-> Phase 1 is next; see [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> **Status:** Phase 1 in progress. `lib/money.ts`, the accounts and statement
+> schemas and the MSW mock bank (pagination, sorting, date filtering, 500s and
+> retry-then-succeed) are in and tested. The screens are next; see
+> [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Why this app, and not a todo list
 
@@ -49,11 +50,24 @@ Requires Node `>=22.18` (see `.nvmrc`) and pnpm.
 
 ```sh
 pnpm install
-pnpm dev
+pnpm dev     # http://localhost:5180
 ```
 
 Non-secret defaults are committed in `.env`, so the dev server starts with MSW
 intercepting API calls and the app runs with no backend at all.
+
+The port is pinned (`strictPort`), because Vite's default 5173 belongs to every
+Vite project at once — sharing it is how a test run ends up driving a different
+app and passing.
+
+To see a failure state in the running app, name a scenario in the URL:
+
+```
+http://localhost:5180/?scenario=accounts-error
+http://localhost:5180/?scenario=statement-retry
+```
+
+The full list is in `src/mocks/scenarios.ts`; an unknown name fails loudly.
 
 To override anything locally, `cp .env.example .env.local` and edit — `.env.local`
 is git-ignored. Setting `VITE_ENABLE_MSW=false` there points the app at a real API
@@ -69,7 +83,7 @@ pnpm exec playwright install
 
 | Command | Does |
 | ------- | ---- |
-| `pnpm dev` | Dev server with hot reload and MSW |
+| `pnpm dev` | Dev server on port 5180, with hot reload and MSW |
 | `pnpm build` | Type-check, then production build |
 | `pnpm preview` | Serve the production build locally |
 | `pnpm type-check` | `vue-tsc` across app, node and test configs |
@@ -105,8 +119,8 @@ Three that explain most review comments:
    pending-transaction status is a correctness bug.
 3. **Loading, empty, error, success.** A screen missing its error state is not done.
 
-The other twenty-seven are in [`CLAUDE.md`](CLAUDE.md) — correctness (1-9),
-architecture and boundaries (10-19), hygiene and change discipline (20-30) —
+The other twenty-nine are in [`CLAUDE.md`](CLAUDE.md) — correctness (1-9),
+architecture and boundaries (10-19), hygiene and change discipline (20-32) —
 with the style detail behind them in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
 
 ## License

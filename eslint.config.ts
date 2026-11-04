@@ -86,6 +86,13 @@ export default defineConfigWithVueTs(
         { type: 'mocks', pattern: 'src/mocks' },
         { type: 'test', pattern: 'src/test' },
       ],
+      /*
+       * A spec file is not application code. It has to stand the app up, which
+       * means reaching the mock backend and the shared test helpers — layers
+       * the feature itself may not touch. Everything else, rule 11 included,
+       * still applies to it.
+       */
+      'boundaries/files': [{ category: 'test', pattern: ['src/**/__tests__/**', 'src/test/**'] }],
     },
     rules: {
       'boundaries/dependencies': [
@@ -165,6 +172,10 @@ export default defineConfigWithVueTs(
 
             // Test setup may reach anything it needs to stand the app up.
             { from: { element: { type: 'test' } }, allow: { to: { element: { type: '*' } } } },
+            {
+              from: { file: { categories: 'test' } },
+              allow: { to: { element: { types: { anyOf: ['mocks', 'test'] } } } },
+            },
           ],
         },
       ],

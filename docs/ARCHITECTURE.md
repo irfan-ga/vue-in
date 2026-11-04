@@ -87,7 +87,43 @@ succeed only on retry means error handling gets written while the feature is
 written, instead of being bolted on later. Building against a happy-path mock is
 how side projects end up with no error states.
 
+### Scenarios
+
+The happy path lives in `src/mocks/handlers.ts`. Everything else — a 503, an
+empty list, a four-second stall, a 500 that succeeds on retry — is named in
+`src/mocks/scenarios.ts` and applied from either side:
+
+| Where | How |
+| ----- | --- |
+| A test | `server.use(...scenarios['statement-error'])` |
+| The running app | `http://localhost:5180/?scenario=statement-error` |
+
+An unknown name throws instead of being ignored, so a typo is visible rather than
+looking like a passing happy path.
+
+### The contract test
+
+`src/mocks/` may not import `src/features/` — the boundaries config enforces it.
+The mock is playing the part of a server, and a type shared with the client would
+hide a drift between what the server sends and what the client accepts. What
+holds the two sides together is
+`src/features/accounts/__tests__/contract.spec.ts`, which parses the mock's own
+payloads with the real zod schemas and replays its running balances.
+
 See `docs/adr/0004-msw-as-the-development-backend.md`.
+
+## Environment
+
+`src/lib/config.ts` is the only module that reads `import.meta.env` (rule 15). It
+validates every variable with zod at module load, so a missing or malformed one
+fails the boot with a message naming it rather than surfacing as `undefined`
+three screens deep. Nothing there can be a secret: every `VITE_` variable is
+inlined into the client bundle and ships in plain text.
+
+The dev and preview ports are pinned with `strictPort` in `vite.config.ts` (5180
+and 4180). Vite's default 5173 is shared with every other Vite project on the
+machine, and a Playwright run once passed against a different app entirely
+because of it.
 
 ## Money
 
