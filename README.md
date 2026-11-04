@@ -8,9 +8,8 @@ on a financial codebase that is already in development: multi-step forms, exact
 money arithmetic, transaction state machines, idempotency, session handling, and
 failure paths that are handled rather than hoped away.
 
-> **Status:** Phase 1 in progress. `lib/money.ts`, the accounts and statement
-> schemas and the MSW mock bank (pagination, sorting, date filtering, 500s and
-> retry-then-succeed) are in and tested. The screens are next; see
+> **Status:** Phase 1 complete — accounts, statement, and the four states of
+> every async screen. Phase 2, the transfer flow, is where the real work is; see
 > [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Why this app, and not a todo list

@@ -33,8 +33,9 @@
   --color-surface-muted: #f6f7f9;
   --color-surface-border: #e4e7ec;
 
-  /* Tabular figures matter for aligning amounts in a statement. */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* The system stack, on purpose: naming a web font the app does not ship is a
+     token that lies, and a download a bank screen does not need. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
 }
 

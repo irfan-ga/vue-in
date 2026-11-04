@@ -35,6 +35,17 @@ export const scenarios = {
     }),
   ],
 
+  /**
+   * The accounts list fails once, then succeeds — the retry button's reason to
+   * exist. `once: true` retires the handler after one request, so the next
+   * falls through to the real one.
+   */
+  'accounts-retry': [
+    http.get(ACCOUNTS_PATH, () => HttpResponse.json({ message: 'Try again' }, { status: 500 }), {
+      once: true,
+    }),
+  ],
+
   /** Every statement page fails, for every account. */
   'statement-error': [
     http.get(STATEMENT_PATH, () =>
@@ -42,11 +53,7 @@ export const scenarios = {
     ),
   ],
 
-  /**
-   * Fails once, then succeeds. `once: true` retires the handler after a single
-   * request so the next one falls through to the real handler — which is what
-   * makes a retry button provable instead of hopeful.
-   */
+  /** The statement's equivalent: one failure, then the real page. */
   'statement-retry': [
     http.get(STATEMENT_PATH, () => HttpResponse.json({ message: 'Try again' }, { status: 500 }), {
       once: true,

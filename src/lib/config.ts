@@ -11,6 +11,8 @@ import { z } from 'zod'
  * inlined into the client bundle and ships to the browser in plain text.
  */
 const envSchema = z.object({
+  /* Vite's own, not a VITE_ variable — but still an env read, so still here. */
+  BASE_URL: z.string().min(1),
   VITE_ENABLE_MSW: z.enum(['true', 'false']),
   VITE_API_BASE_URL: z.string().min(1),
   VITE_APP_ENV: z.enum(['development', 'test', 'production']),
@@ -37,4 +39,7 @@ export const config = {
 
   /** Surfaced in the UI so that nobody mistakes this for a real bank. */
   appEnv: parsed.data.VITE_APP_ENV,
+
+  /** What the app is served under; the router's history needs it. */
+  baseUrl: parsed.data.BASE_URL,
 } as const

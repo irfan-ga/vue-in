@@ -14,6 +14,8 @@
  * something as weeks pass.
  */
 
+import { toBankDay } from '@/lib/format'
+
 export type WireAccount = {
   id: string
   number: string
@@ -65,6 +67,7 @@ const MS_PER_DAY = 86_400_000
 const PAISE_PER_RUPEE = 100
 const LEDGER_DAYS = 150
 const SALARY_EVERY = 15
+const SMALL_CREDIT_EVERY = 11
 const JITTER = 0.8
 
 /** Mock-data sugar: whole rupees on paper, paise in the payload. */
@@ -87,11 +90,10 @@ const DEBIT_NARRATIONS = [
   'CARD/ONLINE RETAIL',
 ] as const
 
-const CREDIT_NARRATIONS = [
-  'SALARY CREDIT/ACME TECH',
-  'UPI/9900112233/Refund',
-  'INTEREST CREDIT',
-] as const
+const SALARY_NARRATION = 'SALARY CREDIT/ACME TECH'
+
+/* Credits that are not payday, and are nothing like payday in size. */
+const SMALL_CREDIT_NARRATIONS = ['UPI/9900112233/Refund', 'INTEREST CREDIT'] as const
 
 /** mulberry32: four lines of seeded PRNG, so the ledger never shifts under us. */
 function createRandom(seed: number): () => number {
@@ -138,8 +140,9 @@ function generateLedger(options: LedgerSeed): Ledger {
 
   for (let index = 0; index < options.entries; index += 1) {
     const at = start - span + index * slot + Math.floor(random() * slot * JITTER)
-    const credit = index % SALARY_EVERY === 0
-    const amount = credit
+    const salary = index % SALARY_EVERY === 0
+    const credit = salary || index % SMALL_CREDIT_EVERY === 0
+    const amount = salary
       ? SALARY_AMOUNT
       : Math.round((MIN_DEBIT + random() * (MAX_DEBIT - MIN_DEBIT)) / PAISE_PER_RUPEE) *
         PAISE_PER_RUPEE
@@ -147,7 +150,9 @@ function generateLedger(options: LedgerSeed): Ledger {
     const entry = {
       id: `txn_${options.id}_${String(index).padStart(3, '0')}`,
       occurredAt: new Date(at).toISOString(),
-      narration: pick(credit ? CREDIT_NARRATIONS : DEBIT_NARRATIONS, random),
+      narration: salary
+        ? SALARY_NARRATION
+        : pick(credit ? SMALL_CREDIT_NARRATIONS : DEBIT_NARRATIONS, random),
       direction: credit ? ('credit' as const) : ('debit' as const),
       amount,
     }
@@ -262,7 +267,8 @@ export function queryStatement(
   if (!ledger) return undefined
 
   const matching = ledger.transactions.filter((entry) => {
-    const day = entry.occurredAt.slice(0, 10)
+    // The bank's calendar day, not UTC's — the same one the statement shows.
+    const day = toBankDay(new Date(entry.occurredAt))
     if (query.from !== undefined && day < query.from) return false
     if (query.to !== undefined && day > query.to) return false
     return true

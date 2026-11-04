@@ -17,10 +17,10 @@ phases are worth less than one complete one.
 
 Data display, done properly.
 
-- [ ] Account list with balances
-- [ ] Statement table with server-side pagination, sort and date-range filter
+- [x] Account list with balances
+- [x] Statement table with server-side pagination, sort and date-range filter
 - [x] `lib/money.ts` — integer paise storage, `Intl.NumberFormat('en-IN')` display
-- [ ] Skeleton loaders, empty state, error state, retry
+- [x] Skeleton loaders, empty state, error state, retry
 - [x] MSW handlers returning realistic latency, 500s and retry-then-succeed
 
 **Teaches:** server state, the money discipline, table patterns.
@@ -28,6 +28,12 @@ Data display, done properly.
 **Definition of Done:** no float arithmetic anywhere near a currency value;
 `₹1,23,456.78` grouping verified by a unit test; every request state
 (loading / empty / error / success) reachable in the UI from an MSW scenario.
+
+**Status: met.** Money is a branded integer, so a float cannot reach a currency
+value without failing to compile. The grouping is pinned by a unit test, and
+every state is reachable in the browser — loading and error through
+`?scenario=`, empty by opening the dormant account — with the journey covered
+end to end in `e2e/accounts.spec.ts`.
 
 ---
 
