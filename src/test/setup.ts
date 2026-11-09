@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll } from 'vitest'
+import { resetBank } from '@/mocks/bank'
 import { server } from '@/mocks/node'
 
 /**
@@ -17,6 +18,8 @@ beforeAll(() => {
 afterEach(() => {
   server.resetHandlers()
   server.events.removeAllListeners()
+  // The mock bank holds state now — transfers, held funds, settled balances.
+  resetBank()
 })
 
 afterAll(() => {

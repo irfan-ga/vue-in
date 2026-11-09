@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { paiseSchema } from './paise'
+import { paiseSchema } from '@/lib/money'
 
 /**
  * An account as the bank reports it.

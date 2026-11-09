@@ -1,7 +1,7 @@
 import { HttpResponse, delay, http, type AnyHandler } from 'msw'
 
-import { accounts } from './bank'
-import { ACCOUNTS_PATH, STATEMENT_PATH } from './handlers'
+import { createTransfer, listAccounts } from './bank'
+import { ACCOUNTS_PATH, STATEMENT_PATH, TRANSFERS_PATH, readInstruction } from './handlers'
 
 /**
  * The failure and edge-case scenarios, named once and reachable from both
@@ -31,7 +31,7 @@ export const scenarios = {
     http.get(ACCOUNTS_PATH, async () => {
       await delay(SLOW_MS)
 
-      return HttpResponse.json({ accounts })
+      return HttpResponse.json({ accounts: listAccounts() })
     }),
   ],
 
@@ -57,6 +57,59 @@ export const scenarios = {
   'statement-retry': [
     http.get(STATEMENT_PATH, () => HttpResponse.json({ message: 'Try again' }, { status: 500 }), {
       once: true,
+    }),
+  ],
+  /** The bank declines before accepting anything: a business refusal, not an outage. */
+  'transfer-rejected': [
+    http.post(TRANSFERS_PATH, () =>
+      HttpResponse.json(
+        { message: 'Your bank declined this transfer. Please contact support.' },
+        { status: 422 },
+      ),
+    ),
+  ],
+
+  /**
+   * The worst case, and the reason idempotency keys exist: the bank accepts the
+   * transfer and the client never hears back. The money has moved; the UI has
+   * no idea. Retrying with the same key must find the original rather than make
+   * a second one.
+   */
+  'transfer-lost': [
+    http.post(
+      TRANSFERS_PATH,
+      async ({ request }) => {
+        const key = request.headers.get('idempotency-key') ?? ''
+        const instruction = readInstruction(await request.json())
+
+        if (instruction) createTransfer(key, instruction)
+
+        return HttpResponse.error()
+      },
+      { once: true },
+    ),
+  ],
+
+  /** Long enough to watch a submit button stay disabled. */
+  'transfer-slow': [
+    http.post(TRANSFERS_PATH, async ({ request }) => {
+      await delay(SLOW_MS)
+
+      const key = request.headers.get('idempotency-key') ?? ''
+      const instruction = readInstruction(await request.json())
+
+      if (!instruction) {
+        return HttpResponse.json(
+          { message: 'That transfer instruction is malformed' },
+          { status: 400 },
+        )
+      }
+
+      const outcome = createTransfer(key, instruction)
+
+      return outcome.ok
+        ? HttpResponse.json(outcome.transfer, { status: 202 })
+        : HttpResponse.json({ message: outcome.message }, { status: outcome.status })
     }),
   ],
 } satisfies Record<string, AnyHandler[]>

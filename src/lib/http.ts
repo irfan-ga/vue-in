@@ -46,28 +46,40 @@ export type GetOptions = {
 /** What a caller hands down from its own lifecycle — Colada supplies it. */
 export type RequestContext = Pick<GetOptions, 'signal'>
 
+export type PostOptions = GetOptions & {
+  /**
+   * Rule 4. The same key on every retry of one intent, so the bank can tell a
+   * retry from a second transfer. A money-moving request without one is a
+   * double debit waiting for a flaky connection.
+   */
+  idempotencyKey?: string
+}
+
 export async function getJson<Output>(
   path: string,
   schema: z.ZodType<Output>,
   options: GetOptions = {},
 ): Promise<Output> {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const timeout = AbortSignal.timeout(timeoutMs)
+  return send('GET', path, schema, options)
+}
 
-  let response: Response
+export async function postJson<Output>(
+  path: string,
+  schema: z.ZodType<Output>,
+  body: unknown,
+  options: PostOptions = {},
+): Promise<Output> {
+  return send('POST', path, schema, options, body)
+}
 
-  try {
-    response = await fetch(buildUrl(path, options.query), {
-      headers: { accept: 'application/json' },
-      signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
-    })
-  } catch (cause) {
-    // Both of these arrive as the same AbortError, so the signals are the tell.
-    if (options.signal?.aborted === true) throw new HttpError({ kind: 'cancelled' })
-    if (timeout.aborted) throw new HttpError({ kind: 'timeout', timeoutMs })
-
-    throw new HttpError({ kind: 'network', cause })
-  }
+async function send<Output>(
+  method: 'GET' | 'POST',
+  path: string,
+  schema: z.ZodType<Output>,
+  options: PostOptions,
+  body?: unknown,
+): Promise<Output> {
+  const response = await fetchOrThrow(method, path, options, body)
 
   if (!response.ok) {
     throw new HttpError({
@@ -77,16 +89,50 @@ export async function getJson<Output>(
     })
   }
 
-  const body: unknown = await response.json().catch(() => MALFORMED)
+  return parseOrThrow(schema, await response.json().catch(() => MALFORMED))
+}
 
-  if (body === MALFORMED) {
+/** Everything that can go wrong before a response exists. */
+async function fetchOrThrow(
+  method: 'GET' | 'POST',
+  path: string,
+  options: PostOptions,
+  body: unknown,
+): Promise<Response> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const timeout = AbortSignal.timeout(timeoutMs)
+
+  try {
+    return await fetch(buildUrl(path, options.query), {
+      method,
+      headers: {
+        accept: 'application/json',
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...(options.idempotencyKey === undefined
+          ? {}
+          : { 'idempotency-key': options.idempotencyKey }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
+    })
+  } catch (cause) {
+    // Both of these arrive as the same AbortError, so the signals are the tell.
+    if (options.signal?.aborted === true) throw new HttpError({ kind: 'cancelled' })
+    if (timeout.aborted) throw new HttpError({ kind: 'timeout', timeoutMs })
+
+    throw new HttpError({ kind: 'network', cause })
+  }
+}
+
+/** Parse once, here, and trust the types below it (rule 18). */
+function parseOrThrow<Output>(schema: z.ZodType<Output>, payload: unknown): Output {
+  if (payload === MALFORMED) {
     throw new HttpError({ kind: 'malformed', detail: 'the response body was not JSON' })
   }
 
-  const parsed = schema.safeParse(body)
+  const parsed = schema.safeParse(payload)
 
   if (!parsed.success) {
-    // Parse once, here, and trust the types below it (rule 18).
     throw new HttpError({ kind: 'malformed', detail: z.prettifyError(parsed.error) })
   }
 

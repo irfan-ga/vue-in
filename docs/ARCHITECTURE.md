@@ -101,6 +101,27 @@ empty list, a four-second stall, a 500 that succeeds on retry — is named in
 An unknown name throws instead of being ignored, so a typo is visible rather than
 looking like a passing happy path.
 
+### What the mock bank does with money
+
+It behaves like a bank rather than like a fixture, because the behaviours worth
+practising only exist on the server:
+
+- **Idempotency keys really deduplicate.** `POST /api/transfers` without an
+  `Idempotency-Key` header is a 400. A key it has seen replays the original
+  transfer with a 200 and `Idempotency-Replayed: true`; a new key is a 202 and a
+  new transfer. This is what makes the lost-response case recoverable rather
+  than a double debit.
+- **Money is held before it moves.** Accepting a transfer drops `available` and
+  puts a pending debit on the statement. Only settlement moves `balance`.
+- **Settlement happens on the second read of a transfer, not on a timer**, so
+  the pending state is observable in the browser and in a test without either
+  waiting on a clock.
+- **A transfer can still fail after being accepted.** A beneficiary account
+  number ending `9999` is refused by the far bank: the hold is released and the
+  pending entry comes off the statement.
+- **Limits are the server's.** ₹2,00,000 per transfer and ₹5,00,000 a day, and
+  the client's copy of those numbers is held to the server's by a contract test.
+
 ### The contract test
 
 `src/mocks/` may not import `src/features/` — the boundaries config enforces it.

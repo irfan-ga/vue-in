@@ -11,11 +11,9 @@ Built:
 
 Planned:
 
-| Module           | Responsibility                                             |
-| ---------------- | ---------------------------------------------------------- |
-| `idempotency.ts` | generating and persisting idempotency keys per user intent |
-| `format.ts`      | dates, account-number masking, IFSC display                |
-| `logger.ts`      | the only sanctioned alternative to `console.*` (rule 23)   |
+| Module      | Responsibility                                           |
+| ----------- | -------------------------------------------------------- |
+| `logger.ts` | the only sanctioned alternative to `console.*` (rule 23) |
 
 See `docs/adr/0003-money-as-integer-paise.md` — currency is an integer number of
 paise everywhere, formatted only at the display edge. `money.ts` makes that a

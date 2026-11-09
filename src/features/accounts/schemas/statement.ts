@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { nonNegativePaiseSchema, paiseSchema } from './paise'
+import { nonNegativePaiseSchema, paiseSchema } from '@/lib/money'
 
 const entrySchema = z.object({
   id: z.string().min(1),

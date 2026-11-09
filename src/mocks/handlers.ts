@@ -1,13 +1,17 @@
 import { HttpResponse, delay, http, type AnyHandler } from 'msw'
+import { z } from 'zod'
 
 import { config } from '@/lib/config'
 
 import {
   STATEMENT_SORTS,
-  accounts,
+  createTransfer,
+  findTransfer,
+  listAccounts,
   queryStatement,
   type StatementQuery,
   type StatementSort,
+  type TransferInstruction,
 } from './bank'
 
 /**
@@ -36,12 +40,36 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 export const ACCOUNTS_PATH = '/api/accounts'
 export const STATEMENT_PATH = '/api/accounts/:accountId/transactions'
+export const TRANSFERS_PATH = '/api/transfers'
+export const TRANSFER_PATH = '/api/transfers/:transferId'
+
+/*
+ * The bank's own validation of what it is sent. It deliberately repeats the
+ * client's rules rather than importing them: a server that trusts the client's
+ * schema is not validating anything, and the contract test is what proves the
+ * two still agree.
+ */
+const instructionSchema = z.object({
+  fromAccountId: z.string().min(1),
+  beneficiaryName: z.string().min(2).max(60),
+  beneficiaryAccountNumber: z.string().regex(/^\d{9,18}$/),
+  ifsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
+  amount: z.number().int().positive(),
+  remarks: z.string().max(40).optional(),
+})
+
+/** Exported so a scenario can accept a transfer and then lose the response. */
+export function readInstruction(body: unknown): TransferInstruction | undefined {
+  const parsed = instructionSchema.safeParse(body)
+
+  return parsed.success ? parsed.data : undefined
+}
 
 export const handlers: AnyHandler[] = [
   http.get(ACCOUNTS_PATH, async () => {
     await delay(LATENCY_MS)
 
-    return HttpResponse.json({ accounts })
+    return HttpResponse.json({ accounts: listAccounts() })
   }),
 
   http.get(STATEMENT_PATH, async ({ params, request }) => {
@@ -59,6 +87,54 @@ export const handlers: AnyHandler[] = [
     }
 
     return HttpResponse.json(page)
+  }),
+
+  http.post(TRANSFERS_PATH, async ({ request }) => {
+    await delay(LATENCY_MS)
+
+    const idempotencyKey = request.headers.get('idempotency-key')
+
+    // A money-moving request without a key is refused, not quietly accepted.
+    if (idempotencyKey === null || idempotencyKey === '') {
+      return HttpResponse.json(
+        { message: 'An Idempotency-Key header is required to move money' },
+        { status: 400 },
+      )
+    }
+
+    const instruction = readInstruction(await request.json())
+
+    if (!instruction) {
+      return HttpResponse.json(
+        { message: 'That transfer instruction is malformed' },
+        { status: 400 },
+      )
+    }
+
+    const outcome = createTransfer(idempotencyKey, instruction)
+
+    if (!outcome.ok) {
+      return HttpResponse.json({ message: outcome.message }, { status: outcome.status })
+    }
+
+    /*
+     * 202 for a transfer the bank has taken on but not yet settled; 200 when it
+     * is replaying one it already has, which is what a retry should see.
+     */
+    return HttpResponse.json(outcome.transfer, {
+      status: outcome.replayed ? 200 : 202,
+      headers: { 'idempotency-replayed': String(outcome.replayed) },
+    })
+  }),
+
+  http.get(TRANSFER_PATH, async ({ params }) => {
+    await delay(LATENCY_MS)
+
+    const transfer = findTransfer(String(params.transferId))
+
+    return transfer
+      ? HttpResponse.json(transfer)
+      : HttpResponse.json({ message: `No transfer ${String(params.transferId)}` }, { status: 404 })
   }),
 ]
 

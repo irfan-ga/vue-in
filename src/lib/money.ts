@@ -15,6 +15,8 @@
  * text, through `parseRupees`, and leave as text, through `formatPaise`.
  */
 
+import { z } from 'zod'
+
 declare const paiseBrand: unique symbol
 
 export type Paise = number & { readonly [paiseBrand]: true }
@@ -136,3 +138,22 @@ function toRupeeString(value: Paise): Intl.StringNumericLiteral {
   const rupees = `${sign}${digits.slice(0, -PAISE_DECIMALS)}.${digits.slice(-PAISE_DECIMALS)}`
   return rupees as Intl.StringNumericLiteral
 }
+
+/**
+ * Money at the wire boundary.
+ *
+ * The server sends an integer number of paise, and this is where it becomes
+ * `Paise`. Nothing below re-checks it (rule 18): a float, a string or a rounded
+ * rupee amount fails here, loudly, instead of drifting through the app.
+ *
+ * These live here rather than in a feature because two features now parse money
+ * — accounts and transfer — and the second one is where a shared thing gets
+ * promoted (rule 11), not cross-imported.
+ */
+export const paiseSchema = z.number().int().transform(toPaise)
+
+/** For amounts whose sign is carried elsewhere, or that cannot be negative. */
+export const nonNegativePaiseSchema = z.number().int().nonnegative().transform(toPaise)
+
+/** An amount of money that has to be more than nothing: a transfer, a fee. */
+export const positivePaiseSchema = z.number().int().positive().transform(toPaise)
